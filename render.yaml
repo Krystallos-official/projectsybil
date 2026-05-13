@@ -1,0 +1,77 @@
+# ═══════════════════════════════════════════════════════
+# render.yaml — Render Blueprint for Project Sybil
+# Deploy all 3 services with one click:
+#   https://render.com/deploy?repo=YOUR_GITHUB_REPO
+# ═══════════════════════════════════════════════════════
+
+services:
+  # ─── 1. Ingestion API (Node.js) ────────────────────
+  - type: web
+    name: sybil-ingestion
+    runtime: node
+    region: oregon
+    plan: free
+    rootDir: packages/ingestion
+    buildCommand: npm install && npm run build
+    startCommand: node dist/index.js
+    envVars:
+      - key: NODE_ENV
+        value: development
+      - key: PORT
+        value: 3001
+      - key: NEO4J_URI
+        sync: false  # You fill this in from Neo4j Aura
+      - key: NEO4J_USER
+        value: neo4j
+      - key: NEO4J_PASSWORD
+        sync: false  # You fill this in from Neo4j Aura
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ANALYSIS_SERVICE_URL
+        fromService:
+          name: sybil-analysis
+          type: web
+          property: url
+    healthCheckPath: /api/health
+
+  # ─── 2. Analysis Engine (Python) ───────────────────
+  - type: web
+    name: sybil-analysis
+    runtime: python
+    region: oregon
+    plan: free
+    rootDir: packages/analysis
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn api:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: NEO4J_URI
+        sync: false
+      - key: NEO4J_USER
+        value: neo4j
+      - key: NEO4J_PASSWORD
+        sync: false
+    healthCheckPath: /health
+
+  # ─── 3. Dashboard (React Static Site) ──────────────
+  - type: web
+    name: sybil-dashboard
+    runtime: static
+    region: oregon
+    plan: free
+    rootDir: packages/dashboard
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          name: sybil-ingestion
+          type: web
+          property: url
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
