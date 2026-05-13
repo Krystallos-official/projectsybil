@@ -30,13 +30,13 @@ export function getDriver(): Driver {
   return _driver;
 }
 
-export function getSession(database = process.env.NEO4J_DATABASE || 'neo4j'): Session {  return getDriver().session({ database });
+export function getSession(database = process.env.NEO4J_DATABASE || 'b2f35f55'): Session {  return getDriver().session({ database });
 }
 
 export async function runQuery<T = Record<string, unknown>>(
   cypher: string,
   params: Record<string, unknown> = {},
-  database =process.env.NEO4J_DATABASE || 'neo4j'
+  database =process.env.NEO4J_DATABASE || 'b2f35f55'
 ): Promise<T[]> {
   const session = getSession(database);
   try {
